@@ -34,8 +34,8 @@
 // #define PERIOD      (28311ULL)
 #define PERIOD      (26667ULL)
 #define MILLISECOND ((PERIOD + 10ULL) / 20ULL)
-#define MIN_PULSE ((uint32_t)(1.4F * MILLISECOND))
-#define MAX_PULSE ((uint32_t)(1.6F * MILLISECOND))
+#define MIN_PULSE ((uint32_t)(1.1F * MILLISECOND))
+#define MAX_PULSE ((uint32_t)(1.8F * MILLISECOND))
 #define PULSE_RANGE ((uint32_t)(MAX_PULSE - MIN_PULSE))
 // #define MIN_PULSE 0
 // #define PULSE_RANGE PERIOD
