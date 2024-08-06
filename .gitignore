@@ -1,0 +1,10 @@
+**/.DS_Store
+**/.direnv/
+**/*.bin
+**/*.d
+**/*.eep
+**/*.elf
+**/*.hex
+**/*.map
+**/*.o
+**/result
