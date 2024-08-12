@@ -5,25 +5,13 @@
 #include <stdint.h>
 
 /* CALCULATIONS:
- * - Empirically, it's exactly 2.7Hz when prescaling by 8 with PERIOD=0xFFFF
  * - On p. 200 of <https://ww1.microchip.com/downloads/aemDocuments/documents/MCU08/ProductDocuments/DataSheets/ATmega4808-09-DataSheet-DS40002173C.pdf>:
  *   - Dual-slope PWM frequency = f_CLK_PER / (2N * PER) where
  *     - N represents the prescaler divider
  *     - PER (presumably) represents the period variable w/ a minimum resolution of 2 bits (i.e. 0x3)
  *     - f_CLK_PER is 16MHz prescaled by 6 = 16MHz / 6 = 2.666...Hz ~= 2,666,666Hz
  *   - So, under the conditions described on the first line, this should be 2,666,666Hz / (2 * 8 * 65535) ~= 2.54317Hz
- *   - Which means it's running slightly but meaningfully faster than it should be:
- *     - ??? / (2 * 8 * 65535) ~= 2.7Hz
- *     - ??? / 1,048,560 ~= 2.7Hz
- *     - ??? ~= 1,048,560 * 2.7Hz
- *     - ??? ~= 2,831,112Hz
  *   - We want a frequency of 50Hz for a period of 20ms
- *     - 2,831,112Hz / (2 * PRS * PER) = 50Hz
- *     - 2,831,112Hz / (PRS * PER) = 100Hz
- *     - 2,831,112Hz / 100Hz = PRS * PER
- *     - 28,311.12 = PRS * PER
- *     - PRS = 1, PER = 28,311.12 ~= 28,311
- *   - Actual frequency would be
  *     - 2,666,666Hz / (2 * PRS * PER) = 50Hz
  *     - 2,666,666Hz / (PRS * PER) = 100Hz
  *     - 2,666,666Hz / 100Hz = PRS * PER
@@ -31,7 +19,6 @@
  *     - PRS = 1, PER = 26,666.66 ~= 26,667
  */
 
-// #define PERIOD      (28311ULL)
 #define PERIOD      (26667ULL)
 #define MILLISECOND ((PERIOD + 10ULL) / 20ULL)
 #define MIN_PULSE ((uint32_t)(1.1F * MILLISECOND))

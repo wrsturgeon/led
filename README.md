@@ -1,5 +1,5 @@
 Using an Arduino Nano Every
 
-Input on pin D5 (pull low to move the arm)
+Input on Arduino pin A7 (chip pin PD5): pull LOW to move the arm
 
-Servo PWM on pin A0
+Servo PWM on Arduino pin D2 (chip pin PA0)
