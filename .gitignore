@@ -7,4 +7,5 @@
 **/*.hex
 **/*.map
 **/*.o
+**/compile_flags.txt
 **/result
