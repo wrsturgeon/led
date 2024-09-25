@@ -1,5 +1,3 @@
-Using an Arduino Nano Every
+Use an Arduino Nano Every
 
-Input on Arduino pin A7 (chip pin PD5): pull LOW to move the arm
-
-Servo PWM on Arduino pin D2 (chip pin PA0)
+Check [`main.c`](/main.c) for more info
