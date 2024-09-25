@@ -42,7 +42,7 @@
 
 // How sharp should the heart's movements be?
 // (i.e. delineated "beats" versus smooth oscillation)
-#define PULSE_STRENGTH 6
+#define PULSE_STRENGTH 5
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Below this line is complex: tread carefully!
