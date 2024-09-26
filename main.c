@@ -7,9 +7,9 @@
 // which is labelled PD3 in the pinout below:
 // https://docs.arduino.cc/resources/pinouts/ABX00028-full-pinout.pdf
 
-// If you want to edit settings like beats per minute or servo range,
+// If you'd like to edit settings like beats per minute or servo range,
 // look past the short import section (which has to stay at the top)
-// to the next section, labelled "SETTINGS:"
+// to the next section, labelled "SETTINGS."
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Import some information about the board:
@@ -32,10 +32,10 @@
 #define N_SERVOS 3
 
 // Minimum pulse percent (/100):
-#define MIN_PULSE_PERCENT 20
+#define MIN_PULSE_PERCENT 0
 
 // Maximum pulse percent (/100):
-#define MAX_PULSE_PERCENT 70
+#define MAX_PULSE_PERCENT 50
 
 // How far into the last servo's cycle should the next servo's cycle start?
 #define PULSE_STAGGER 0.075
@@ -88,8 +88,7 @@
  *       w/ a minimum resolution of 2 bits (i.e. 0x3)
  *     - f_CLK_PER is 16MHz prescaled by 6:
  *       16MHz / 6 = 2.666...Hz ~= 2,666,666Hz
- *     - I'm guessing that the "+ 1" means that
- *       the clock goes up to *and including* `PER`
+ *     - Note that "+ 1" means that the clock goes up to *and including* `PER`.
  *   - We want the period to be 20ms (i.e. we want the frequency to be 50Hz):
  *     - f_CLK_PER / N(PER + 1) = 50Hz
  *     - 2,666,666Hz / N(PER + 1) = 50Hz
@@ -103,7 +102,7 @@
  *     - 53,333.3... <= 65,536N
  *     - 0.813802... <= N
  *   - Okay, so that's not possible, but N=1 is close enough
- *   - Now let's tackle `PER`:
+ *   - Now we can calculate `PER`:
  *     - 53,333.3... = PER + 1
  *     - 53,332.3... = PER
  *     - 53,332 ~= PER
@@ -123,7 +122,6 @@
  * (even with 8 servos, we'd have 8(1/8ms + 2ms) = 17ms,
  * so still worst-case 3ms left for calculations, which is plenty):
  */
-// #define BETWEEN_PULSES (MILLISECOND >> 3ULL)
 #define BETWEEN_PULSES ((MILLISECOND << 1ULL) + (MILLISECOND >> 3ULL))
 
 // Subroutine to initialize the clock:
@@ -146,14 +144,17 @@ inline static void PORT_init(void) {
   }
 }
 
+// A specific two-byte region on the microcontroller holds the timer's count:
 inline static uint16_t clock(void) { return TCA0.SINGLE.CNT; }
 
-// All variables:
+// Define variables before we use them to save stack instructions:
 static uint8_t cycle_count, pin_mask;
 static uint16_t pulse_center, actual_width, moment;
 static uint16_t extra_clocks[N_SERVOS];
 static float angle;
 
+// This is going to be used twice, so we can save memory and
+// make sure it's the same behavior with a function:
 static void update_positions(void) {
   angle = (cycle_count * (FLOAT_PI / PERIOD_CYCLES)); // [0, pi)
   for (uint8_t i = 0; i < N_SERVOS; ++i) {
@@ -254,5 +255,6 @@ int main(void) {
     do {
     } while (clock() > moment);
 
+    // And start over!
   } while (1);
 }
