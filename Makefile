@@ -34,4 +34,4 @@ upload: main.hex
 	avr-objcopy -O ihex -R .eeprom $< $@
 
 clean:
-	rm -fr *.bin *.d *.eep *.elf *.hex *.map *.o
+	rm -fr .DS_Store .direnv *.bin *.d *.eep *.elf *.hex *.map *.o compile_flags.txt result
