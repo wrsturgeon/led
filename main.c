@@ -29,16 +29,16 @@
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 // Frame rate:
-#define FRAME_RATE 100
+#define FRAME_RATE 60
 
 // Beats per minute:
-#define BPM 45
+#define BPM 90
 
 // Which pins should send a signal to which LEDs, in order?
 static char const *const PIN_NAMES[] = {"D0", "D1", "D2", "D3"};
 
 // Minimum luminosity percent (/100):
-#define MIN_LUMINOSITY_PERCENT 10
+#define MIN_LUMINOSITY_PERCENT 0
 
 // Maximum luminosity percent (/100):
 #define MAX_LUMINOSITY_PERCENT 90
@@ -46,7 +46,7 @@ static char const *const PIN_NAMES[] = {"D0", "D1", "D2", "D3"};
 // Calculate an LED's position based on its time within a cycle (from 0 to 1)
 // and its ID. NOTE: Make sure the output is between 0 and 1!
 float luminosity(float const percent_of_cycle, uint8_t const id) {
-  return 0.5F * (1.F + sinf(6.2831853072 * percent_of_cycle + id));
+  return 0.5F * (1.F + sinf(6.2831853072 * percent_of_cycle + (id << 1)));
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -97,13 +97,10 @@ float luminosity(float const percent_of_cycle, uint8_t const id) {
 #if PERIOD > 65535
 #error Frame rate is too slow!
 #endif
-#define HALF_PERIOD (PERIOD >> 1U)
 
-#define PLUS_MINUS_MIN                                                         \
-  (((MIN_LUMINOSITY_PERCENT * HALF_PERIOD) + 50ULL) / 100ULL)
-#define PLUS_MINUS_MAX                                                         \
-  (((MAX_LUMINOSITY_PERCENT * HALF_PERIOD) + 50ULL) / 100ULL)
-#define PLUS_MINUS_RANGE (PLUS_MINUS_MAX - PLUS_MINUS_MIN)
+#define PULSE_MIN (((MIN_LUMINOSITY_PERCENT * PERIOD) + 50ULL) / 100ULL)
+#define PULSE_MAX (((MAX_LUMINOSITY_PERCENT * PERIOD) + 50ULL) / 100ULL)
+#define PULSE_RANGE (PULSE_MAX - PULSE_MIN)
 
 // How many LEDs are we using?
 // static uint8_t const N_LEDS = (sizeof(PIN_NAMES) / sizeof(char const
@@ -157,9 +154,8 @@ static void recalculate_pulse_widths(void) {
   float const percent_of_cycle = (((float)cycle_count) / PERIOD_IN_CYCLES);
   for (uint8_t i = 0; i < N_LEDS; ++i) {
     pulse_widths[i].pulse_width =
-        (PLUS_MINUS_MIN +
-         (uint16_t)(PLUS_MINUS_RANGE *
-                    luminosity(percent_of_cycle, pulse_widths[i].id)));
+        (PULSE_MIN + (uint16_t)(PULSE_RANGE * luminosity(percent_of_cycle,
+                                                         pulse_widths[i].id)));
   }
   sort_pulse_widths();
 }
@@ -173,49 +169,45 @@ static void init_pulse_widths(void) {
 
 typedef struct pin {
   register8_t *unmasked;
-  uint8_t on_mask;
-  uint8_t off_mask;
+  uint8_t pin_number;
 } pin;
 
 inline static void pin_on(pin const *const p) {
-  (*(p->unmasked)) |= (p->on_mask);
+  (*(p->unmasked)) |= (1U << (p->pin_number));
 }
 inline static void pin_off(pin const *const p) {
-  (*(p->unmasked)) &= (p->off_mask);
+  (*(p->unmasked)) &= ~(1U << (p->pin_number));
 }
 
 static pin PINS[N_LEDS];
 
 static void init_pins(void) {
   for (uint8_t id = 0; id < N_LEDS; ++id) {
-    uint8_t const digit = (PIN_NAMES[id][1] - '0');
-    uint8_t const mask = (1U << digit);
-    PINS[id].on_mask = mask;
-    PINS[id].off_mask = ~mask;
+    PINS[id].pin_number = (PIN_NAMES[id][1] - '0');
 
     switch (PIN_NAMES[id][0]) {
     case 'A':
-      PORTA.DIR |= mask;
+      PORTA.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTA.OUT;
       break;
     case 'B':
-      PORTB.DIR |= mask;
+      PORTB.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTB.OUT;
       break;
     case 'C':
-      PORTC.DIR |= mask;
+      PORTC.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTC.OUT;
       break;
     case 'D':
-      PORTD.DIR |= mask;
+      PORTD.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTD.OUT;
       break;
     case 'E':
-      PORTE.DIR |= mask;
+      PORTE.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTE.OUT;
       break;
     case 'F':
-      PORTF.DIR |= mask;
+      PORTF.DIR |= (1U << (PINS[id].pin_number));
       PINS[id].unmasked = &PORTF.OUT;
       break;
     default:
@@ -239,13 +231,11 @@ inline static void TCA0_init(void) {
   TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
 }
 
-// A specific two-byte region on the microcontroller holds the timer's count:
-inline static uint16_t clock(void) { return TCA0.SINGLE.CNT; }
-
 int main(void) {
 
-  // Reset the cycle count:
+  // Reset variables:
   cycle_count = 0;
+  led pw;
 
   // Initialize pulse-width array:
   init_pulse_widths();
@@ -262,33 +252,22 @@ int main(void) {
   // Enable interrupts
   sei();
 
-  uint8_t i = (N_LEDS - 1);
-  uint16_t moment;
-
   // Nothing else to do, so timing can use busy-waiting for readability:
   do {
 
-    // Start with the longest pulse width (i.e. keep `i` at `N_LEDS - 1`),
-    // since it will start first:
-    do {
-      moment = (HALF_PERIOD - (pulse_widths[i].pulse_width));
-      do { // nothing
-      } while (TCA0.SINGLE.CNT < moment);
+    // Turn all the LEDs on, in sorted order,
+    // so that timing-related errors don't favor earlier ID numbers:
+    for (uint8_t i = 0; i < N_LEDS; ++i) {
       pin_on(&(PINS[pulse_widths[i].id]));
-    } while (i--); // down to, and including, (i = 0)
+    }
 
-    // Then start with the shortest pulse width (i.e. keep `i` at 0),
-    // since it will end first:
-    do {
-      moment = (HALF_PERIOD + (pulse_widths[i].pulse_width));
+    // Then turn them off when each of their cycles end:
+    for (uint8_t i = 0; i < N_LEDS; ++i) {
+      pw = pulse_widths[i];
       do { // nothing
-      } while (TCA0.SINGLE.CNT < moment);
-      pin_off(&(PINS[pulse_widths[i].id]));
-      if (i == (N_LEDS - 1)) {
-        break;
-      }
-      ++i;
-    } while (1);
+      } while (TCA0.SINGLE.CNT < (pw.pulse_width));
+      pin_off(&(PINS[pw.id]));
+    }
 
     // Update cycle count & reset if we've finished a set:
     if (PERIOD_IN_CYCLES == ++cycle_count) {
@@ -297,6 +276,10 @@ int main(void) {
 
     // Recalculate luminosities for the next cycle:
     recalculate_pulse_widths();
+
+    // Wait until the next cycle:
+    do {
+    } while (TCA0.SINGLE.CNT > (pw.pulse_width));
 
     // And start over!
   } while (1);
