@@ -28,7 +28,7 @@
       in
       {
         packages.default = pkgs.stdenvNoCC.mkDerivation {
-          name = "magic-shelf";
+          name = "heart";
           src = ./.;
           installPhase = "cp -r . $out";
           buildInputs = [ avr-toolchain ];
